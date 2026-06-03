@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>Bracket</title>
+<style>
+  body {
+    background: linear-gradient(160deg, #0d0d1a 0%, #1a1a2e 40%, #0f3460 100%);
+    min-height: 100vh;
+    color: #fff;
+  }
+  .navbar-brand { font-weight: 800; }
+  .bg-deco {
+    position: fixed; font-size: 22rem; opacity: 0.025;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none; z-index: 0; user-select: none;
+  }
+  .bracket-wrapper { overflow-x: auto; padding: 1rem; }
+  .bracket-grid {
+    display: flex;
+    gap: 12px;
+    min-width: max-content;
+    align-items: flex-start;
+  }
+  .fase-col { display: flex; flex-direction: column; gap: 8px; }
+  .fase-title {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #000;
+    background: #e8a838;
+    border-radius: 6px 6px 0 0;
+    padding: 4px 10px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .match-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    width: 170px;
+    overflow: hidden;
+    font-size: 0.75rem;
+  }
+  .match-team {
+    padding: 5px 9px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+  }
+  .match-team:last-child { border-bottom: none; }
+  .match-team.winner { background: rgba(56,180,56,0.25); color: #7eff7e; font-weight: 700; }
+  .match-team.pending { color: rgba(255,255,255,0.3); font-style: italic; font-weight: 400; }
+  .match-meta {
+    padding: 3px 9px;
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.35);
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .fase-spacer { flex: 1; }
+  /* Columns for vertical centering within bracket */
+  .fase-col.octavos  { justify-content: space-around; }
+  .fase-col.cuartos  { justify-content: space-around; }
+  .fase-col.semis    { justify-content: space-around; }
+  .fase-col.final-col { justify-content: center; }
+  #cargando { text-align: center; padding: 3rem; color: rgba(255,255,255,0.4); }
+</style>
+</head>
+<body>
+
+<div class="bg-deco">⚽</div>
+<nav class="navbar navbar-expand-lg navbar-dark py-2" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);position:relative;z-index:1">
+  <div class="container-fluid">
+    <span class="navbar-brand">🏆 PRODE MUNDIAL</span>
+    <div class="navbar-nav flex-row" id="menu"></div>
+    <div class="ms-auto">
+      <button class="btn btn-outline-light btn-sm" onclick="salir()">Salir</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid mt-3" style="position:relative;z-index:1">
+  <h5 class="ms-2 mb-3" style="color:rgba(255,255,255,0.8);font-weight:700">🏟️ Fase de Eliminación Directa</h5>
+  <div id="cargando"><div class="spinner-border spinner-border-sm me-2"></div>Cargando bracket...</div>
+  <div id="bracket-container" style="display:none"></div>
+</div>
+
+<script>
+const API = "https://script.google.com/macros/s/AKfycbwHYzEcdorq6L_UjrXLDLFbkNWeDrtgxiFKDT7EfQ6fFsU-12heggLqoeSnvvIYwJUY/exec";
+const usuario = localStorage.getItem("usuario");
+const rol     = localStorage.getItem("rol");
+
+let menuHtml = `
+  <a class="nav-link me-3" href="apuestas.html">Apuestas</a>
+  <a class="nav-link me-3" href="posiciones.html">Posiciones</a>
+  <a class="nav-link me-3" href="bracket.html">Bracket</a>
+`;
+if (rol == "admin") menuHtml += `<a class="nav-link" href="admin.html">Admin</a>`;
+document.getElementById("menu").innerHTML = menuHtml;
+
+function salir() { localStorage.clear(); window.location = "index.html"; }
+
+async function cargarBracket() {
+  try {
+    const res    = await fetch(API + "?accion=eliminatorias");
+    const datos  = await res.json();
+    renderBracket(datos);
+  } catch(e) {
+    document.getElementById("cargando").innerHTML = "Error al cargar bracket.";
+  }
+}
+
+function renderBracket(datos) {
+  document.getElementById("cargando").style.display = "none";
+  document.getElementById("bracket-container").style.display = "block";
+
+  const byId = {};
+  datos.forEach(p => byId[p.id] = p);
+
+  const fases = [
+    { key: "16avos de Final",  ids: ["P73","P74","P75","P76","P77","P78","P79","P80","P81","P82","P83","P84","P85","P86","P87","P88"] },
+    { key: "Octavos de Final", ids: ["P89","P90","P91","P92","P93","P94","P95","P96"] },
+    { key: "Cuartos de Final", ids: ["P97","P98","P99","P100"] },
+    { key: "Semifinal",        ids: ["P101","P102"] },
+    { key: "Final / 3°",       ids: ["P104","P103"] },
+  ];
+
+  let html = `<div class="bracket-wrapper"><div class="bracket-grid">`;
+
+  fases.forEach(fase => {
+    html += `<div class="fase-col">`;
+    html += `<div class="fase-title">${fase.key}</div>`;
+    fase.ids.forEach(id => {
+      const p = byId[id];
+      if (!p) return;
+      const localClass    = p.ganador && p.ganador === p.local    ? "winner" : (p.local    && !p.local.startsWith("Gan.")    && !p.local.startsWith("Perd.")    ? "" : "pending");
+      const visitanteClass= p.ganador && p.ganador === p.visitante? "winner" : (p.visitante&& !p.visitante.startsWith("Gan.") && !p.visitante.startsWith("Perd.") ? "" : "pending");
+
+      html += `
+      <div class="match-card">
+        ${p.fecha || p.sede ? `<div class="match-meta">${p.fecha || ""} · ${p.sede || ""}</div>` : ""}
+        <div class="match-team ${localClass}">${p.local || "—"}</div>
+        <div class="match-team ${visitanteClass}">${p.visitante || "—"}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `</div></div>`;
+  document.getElementById("bracket-container").innerHTML = html;
+}
+
+cargarBracket();
+</script>
+</body>
+</html>

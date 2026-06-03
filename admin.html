@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>Administrador</title>
+<style>
+  body {
+    background: linear-gradient(160deg, #0d0d1a 0%, #1a1a2e 40%, #0f3460 100%);
+    min-height: 100vh; color: #fff;
+  }
+  .bg-deco {
+    position: fixed; font-size: 22rem; opacity: 0.025;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none; z-index: 0; user-select: none;
+  }
+  .content { position: relative; z-index: 1; }
+  .navbar-brand { font-weight: 800; }
+
+  /* ── FASE DE GRUPOS ── */
+  .partido-admin {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 10px 14px;
+    margin-bottom: 8px; display: flex;
+    align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .partido-admin .nombre { flex: 1; font-weight: 600; font-size: .88rem; color: #fff; }
+  .btn-res {
+    font-size: .75rem; font-weight: 700; padding: 4px 12px;
+    border-radius: 7px; border: 2px solid; cursor: pointer;
+    background: transparent; transition: background .12s, color .12s;
+  }
+  .btn-res.L-off { border-color:#198754; color:#4ade80; }
+  .btn-res.L-on  { border-color:#198754; background:#198754; color:#fff; }
+  .btn-res.E-off { border-color:#ffc107; color:#ffc107; }
+  .btn-res.E-on  { border-color:#ffc107; background:#ffc107; color:#000; }
+  .btn-res.V-off { border-color:#dc3545; color:#f87171; }
+  .btn-res.V-on  { border-color:#dc3545; background:#dc3545; color:#fff; }
+
+  /* ── ELIMINATORIAS ── */
+  .elim-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+  }
+  .fase-badge {
+    font-size: .65rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; background: #e8a838; color: #000;
+    margin-bottom: 6px; display: inline-block;
+  }
+  .elim-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .elim-vs { color: rgba(255,255,255,0.3); font-size: .75rem; flex-shrink:0; }
+
+  /* Slot con dropdown de equipos */
+  .slot-btn {
+    position: relative; display: inline-block;
+  }
+  .slot-trigger {
+    font-size: .78rem; font-weight: 600; padding: 5px 11px;
+    border-radius: 7px; cursor: pointer;
+    border: 2px dashed rgba(232,168,56,0.5);
+    background: rgba(232,168,56,0.08); color: #e8a838;
+    white-space: nowrap; max-width: 180px;
+    overflow: hidden; text-overflow: ellipsis;
+    transition: border-color .15s, background .15s;
+  }
+  .slot-trigger:hover { border-color: #e8a838; background: rgba(232,168,56,0.15); }
+  .slot-trigger.definido {
+    border: 2px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.07); color: #fff;
+  }
+  .slot-dropdown {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0;
+    background: #1e2340; border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; z-index: 1000; min-width: 180px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden;
+  }
+  .slot-dropdown.open { display: block; }
+  .slot-opt {
+    padding: 8px 13px; font-size: .8rem; cursor: pointer; color: #fff;
+    display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    transition: background .1s;
+  }
+  .slot-opt:last-child { border-bottom: none; }
+  .slot-opt:hover { background: rgba(232,168,56,0.15); color: #e8a838; }
+
+  /* Ganador badge */
+  .badge-ganador {
+    background: #e8a838; color: #000; font-size: .75rem;
+    font-weight: 700; padding: 4px 10px; border-radius: 20px;
+  }
+  /* Botón ganador elim */
+  .btn-gan {
+    font-size: .75rem; font-weight: 700; padding: 5px 12px;
+    border-radius: 7px; border: 2px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.8); background: transparent; cursor: pointer;
+    transition: border-color .12s, color .12s;
+    white-space: nowrap; max-width: 160px;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .btn-gan:hover { border-color: #4ade80; color: #4ade80; }
+
+  .sec-title { font-size: .95rem; font-weight: 700; color: rgba(255,255,255,.85); margin-bottom: .75rem; }
+</style>
+</head>
+<body>
+<div class="bg-deco">⚽</div>
+<div class="content">
+
+<nav class="navbar navbar-expand-lg navbar-dark py-2" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(8px)">
+  <div class="container-fluid">
+    <span class="navbar-brand">🏆 PRODE MUNDIAL</span>
+    <div class="navbar-nav flex-row">
+      <a class="nav-link me-3" href="apuestas.html">Apuestas</a>
+      <a class="nav-link me-3" href="posiciones.html">Posiciones</a>
+      <a class="nav-link me-3" href="bracket.html">Bracket</a>
+      <a class="nav-link" href="admin.html">Admin</a>
+    </div>
+    <div class="ms-auto text-white d-flex align-items-center gap-2">
+      <small id="usuarioNavbar"></small>
+      <button class="btn btn-outline-light btn-sm" onclick="salir()">Salir</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container mt-3" style="max-width:760px">
+
+  <div class="sec-title mb-1">⚙️ Resultados — Fase de Grupos</div>
+  <div id="partidos">
+    <div class="text-center py-3" style="color:rgba(255,255,255,0.4)">
+      <div class="spinner-border spinner-border-sm me-2"></div>Cargando...
+    </div>
+  </div>
+
+  <hr style="border-color:rgba(255,255,255,0.1)" class="my-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="sec-title mb-0">🏆 Eliminatorias</div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm" style="border:1px solid rgba(255,100,100,0.4);color:rgba(255,100,100,0.8)"
+        onclick="resetearTodo()">🗑️ Resetear todo</button>
+      <button class="btn btn-sm" style="border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7)"
+        onclick="inicializarEliminatorias()">⚡ Inicializar bracket</button>
+    </div>
+  </div>
+  <div id="eliminatorias">
+    <div class="text-center py-3" style="color:rgba(255,255,255,0.4)">
+      <div class="spinner-border spinner-border-sm me-2"></div>Cargando...
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const API     = "https://script.google.com/macros/s/AKfycbwHYzEcdorq6L_UjrXLDLFbkNWeDrtgxiFKDT7EfQ6fFsU-12heggLqoeSnvvIYwJUY/exec";
+const usuario = localStorage.getItem("usuario");
+const rol     = localStorage.getItem("rol");
+
+document.getElementById("usuarioNavbar").textContent = usuario;
+if (rol != "admin") { alert("Acceso denegado"); window.location = "apuestas.html"; }
+function salir() { localStorage.clear(); window.location = "index.html"; }
+
+// ── GRUPOS ──────────────────────────────────────────────
+const GRUPOS = {
+  A: ["México",        "Sudáfrica",          "Corea del Sur",  "República Checa"],
+  B: ["Canadá",        "Bosnia y Herzegovina","Qatar",          "Suiza"],
+  C: ["Brasil",        "Marruecos",          "Haití",          "Escocia"],
+  D: ["Estados Unidos","Paraguay",           "Australia",       "Turquía"],
+  E: ["Alemania",      "Curazao",            "Costa de Marfil", "Ecuador"],
+  F: ["Países Bajos",  "Japón",              "Suecia",          "Túnez"],
+  G: ["Bélgica",       "Egipto",             "Irán",            "Nueva Zelanda"],
+  H: ["España",        "Cabo Verde",         "Arabia Saudita",  "Uruguay"],
+  I: ["Francia",       "Senegal",            "Irak",            "Noruega"],
+  J: ["Argentina",     "Argelia",            "Austria",         "Jordania"],
+  K: ["Portugal",      "RD de Congo",        "Uzbekistán",      "Colombia"],
+  L: ["Inglaterra",    "Croacia",            "Ghana",           "Panamá"]
+};
+
+// Flags (subset)
+const FLAGS = {
+  "México":"🇲🇽","Sudáfrica":"🇿🇦","Corea del Sur":"🇰🇷","República Checa":"🇨🇿",
+  "Canadá":"🇨🇦","Bosnia y Herzegovina":"🇧🇦","Qatar":"🇶🇦","Suiza":"🇨🇭",
+  "Brasil":"🇧🇷","Marruecos":"🇲🇦","Haití":"🇭🇹","Escocia":"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "Estados Unidos":"🇺🇸","Paraguay":"🇵🇾","Australia":"🇦🇺","Turquía":"🇹🇷",
+  "Alemania":"🇩🇪","Curazao":"🇨🇼","Costa de Marfil":"🇨🇮","Ecuador":"🇪🇨",
+  "Países Bajos":"🇳🇱","Japón":"🇯🇵","Suecia":"🇸🇪","Túnez":"🇹🇳",
+  "Bélgica":"🇧🇪","Egipto":"🇪🇬","Irán":"🇮🇷","Nueva Zelanda":"🇳🇿",
+  "España":"🇪🇸","Cabo Verde":"🇨🇻","Arabia Saudita":"🇸🇦","Uruguay":"🇺🇾",
+  "Francia":"🇫🇷","Senegal":"🇸🇳","Irak":"🇮🇶","Noruega":"🇳🇴",
+  "Argentina":"🇦🇷","Argelia":"🇩🇿","Austria":"🇦🇹","Jordania":"🇯🇴",
+  "Portugal":"🇵🇹","RD de Congo":"🇨🇩","Uzbekistán":"🇺🇿","Colombia":"🇨🇴",
+  "Inglaterra":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croacia":"🇭🇷","Ghana":"🇬🇭","Panamá":"🇵🇦"
+};
+
+// Obtener equipos candidatos para un placeholder como "2° Grupo A" o "3° Grupo A/B/C/D"
+function getEquiposParaSlot(texto) {
+  if (!texto) return null;
+  const m = texto.match(/(\d)°\s*Grupo\s+([A-L\/]+)/i);
+  if (!m) return null;
+  const grupos = m[2].split("/");
+  const equipos = [];
+  grupos.forEach(g => { if (GRUPOS[g]) GRUPOS[g].forEach(e => equipos.push(e)); });
+  return equipos.length ? equipos : null;
+}
+
+function esPlaceholder(texto) {
+  return texto && /\d°\s*Grupo/i.test(texto);
+}
+
+// ── FASE DE GRUPOS ──────────────────────────────────────
+const resultadosLocales = {};
+
+async function cargarPartidos() {
+  const res      = await fetch(`${API}?accion=partidos`);
+  const partidos = await res.json();
+  let html = "";
+  partidos.forEach(p => {
+    const r = resultadosLocales[p.id] || "";
+    html += `
+    <div class="partido-admin">
+      <div class="nombre">${p.localFlag} ${p.local} vs ${p.visitanteFlag} ${p.visitante}</div>
+      <div class="d-flex gap-1">
+        <button id="ra-${p.id}-L" class="btn-res ${r==='L'?'L-on':'L-off'}" onclick="guardarResultado(${p.id},'L')">Local</button>
+        <button id="ra-${p.id}-E" class="btn-res ${r==='E'?'E-on':'E-off'}" onclick="guardarResultado(${p.id},'E')">Empate</button>
+        <button id="ra-${p.id}-V" class="btn-res ${r==='V'?'V-on':'V-off'}" onclick="guardarResultado(${p.id},'V')">Visitante</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById("partidos").innerHTML = html;
+}
+
+function guardarResultado(id, res) {
+  ['L','E','V'].forEach(t => {
+    const b = document.getElementById(`ra-${id}-${t}`);
+    if (b) b.className = `btn-res ${t === res ? t+'-on' : t+'-off'}`;
+  });
+  resultadosLocales[id] = res;
+  fetch(`${API}?accion=resultado&partido=${id}&resultado=${res}`).catch(()=>{});
+}
+
+// ── ELIMINATORIAS ───────────────────────────────────────
+async function cargarEliminatorias() {
+  const res   = await fetch(`${API}?accion=eliminatorias`);
+  const datos = await res.json();
+
+  if (!datos.length) {
+    document.getElementById("eliminatorias").innerHTML =
+      `<p style="color:rgba(255,255,255,0.4);font-size:.85rem">No hay partidos. Usá "⚡ Inicializar bracket" para cargar el fixture.</p>`;
+    return;
+  }
+
+  const fases = {};
+  datos.forEach(p => { if (!fases[p.fase]) fases[p.fase] = []; fases[p.fase].push(p); });
+
+  let html = "";
+  const orden = ["16avos de Final","Octavos de Final","Cuartos de Final","Semifinal","Tercer Puesto","Final"];
+
+  orden.forEach(f => {
+    if (!fases[f]) return;
+    html += `<div class="fase-badge">${f}</div><div class="mb-3">`;
+
+    fases[f].forEach(p => {
+      const localSlot     = renderSlot(p.id, "L", p.local);
+      const visitanteSlot = renderSlot(p.id, "V", p.visitante);
+
+      html += `<div class="elim-card">
+        <div class="d-flex align-items-center gap-1 mb-1" style="font-size:.65rem;color:rgba(255,255,255,0.35)">${p.id} · ${p.fecha||""} · ${p.sede||""}</div>
+        <div class="elim-row">
+          ${localSlot}
+          <span class="elim-vs">vs</span>
+          ${visitanteSlot}
+          ${p.ganador
+            ? `<span class="ms-auto badge-ganador">🏆 ${p.ganador}</span>`
+            : ganadorButtons(p)}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  document.getElementById("eliminatorias").innerHTML = html;
+
+  // Cerrar dropdowns al clickear afuera
+  document.addEventListener("click", cerrarDropdowns, { once: true });
+}
+
+function renderSlot(partidoId, slot, texto) {
+  if (!texto) texto = "—";
+  const equipos = esPlaceholder(texto) ? getEquiposParaSlot(texto) : null;
+
+  if (equipos) {
+    // Slot pendiente con dropdown de equipos
+    const uid   = `dd-${partidoId}-${slot}`;
+    const opts  = equipos.map(e =>
+      `<div class="slot-opt" onclick="seleccionarEquipo('${partidoId}','${slot}','${e}','${uid}')">
+        <span>${FLAGS[e]||''}</span><span>${e}</span>
+      </div>`
+    ).join("");
+    return `
+    <div class="slot-btn">
+      <button class="slot-trigger" onclick="toggleDropdown('${uid}',event)">
+        📋 ${texto} ▾
+      </button>
+      <div class="slot-dropdown" id="${uid}">
+        <div style="padding:6px 12px 4px;font-size:.65rem;color:rgba(255,255,255,0.4);border-bottom:1px solid rgba(255,255,255,0.08)">Seleccioná el equipo</div>
+        ${opts}
+      </div>
+    </div>`;
+  } else {
+    // Slot ya definido (equipo real o Gan. PXX)
+    const esGanador = texto && (texto.startsWith("Gan.") || texto.startsWith("Perd."));
+    return `<button class="slot-trigger definido" style="cursor:${esGanador?'default':'pointer'}"
+      ${!esGanador ? `onclick="reabrirSlot('${partidoId}','${slot}','${texto}')"` : ''}>
+      ${FLAGS[texto]||''} ${texto}${!esGanador?'  ✎':''}
+    </button>`;
+  }
+}
+
+function ganadorButtons(p) {
+  const l = p.local; const v = p.visitante;
+  if (!l || !v || esPlaceholder(l) || esPlaceholder(v) ||
+      l.startsWith("Gan.") || v.startsWith("Gan.")) {
+    return `<span style="color:rgba(255,255,255,0.25);font-size:.75rem;margin-left:auto">Esperando equipos</span>`;
+  }
+  return `
+  <div class="ms-auto d-flex gap-1">
+    <button class="btn-gan" onclick="setGanador('${p.id}','${l}','${v}')">${FLAGS[l]||''} ${l}</button>
+    <button class="btn-gan" onclick="setGanador('${p.id}','${v}','${l}')">${FLAGS[v]||''} ${v}</button>
+  </div>`;
+}
+
+function toggleDropdown(uid, event) {
+  event.stopPropagation();
+  const el = document.getElementById(uid);
+  const isOpen = el.classList.contains("open");
+  // Cerrar todos
+  document.querySelectorAll(".slot-dropdown.open").forEach(d => d.classList.remove("open"));
+  if (!isOpen) {
+    el.classList.add("open");
+    // Cerrar al click afuera
+    setTimeout(() => {
+      document.addEventListener("click", () => cerrarDropdowns(), { once: true });
+    }, 0);
+  }
+}
+
+function cerrarDropdowns() {
+  document.querySelectorAll(".slot-dropdown.open").forEach(d => d.classList.remove("open"));
+}
+
+async function seleccionarEquipo(partidoId, slot, equipo, uid) {
+  cerrarDropdowns();
+  // Guardar en la hoja
+  await fetch(`${API}?accion=actualizarSlot&id=${encodeURIComponent(partidoId)}&slot=${slot}&equipo=${encodeURIComponent(equipo)}`);
+  // Recargar
+  cargarEliminatorias();
+}
+
+// Permite re-editar un slot ya definido (equipo real)
+function reabrirSlot(partidoId, slot, equipoActual) {
+  // Buscar los equipos posibles para este partido/slot — recargamos para obtener el placeholder original
+  // Por simplicidad, mostramos un dropdown con los equipos del grupo del partido
+  // Mejor: recargar y dejar el dato en blanco para volver al dropdown
+  if (!confirm(`¿Cambiar "${equipoActual}"? Se limpiará este slot.`)) return;
+  fetch(`${API}?accion=actualizarSlot&id=${encodeURIComponent(partidoId)}&slot=${slot}&equipo=`)
+    .then(() => cargarEliminatorias());
+}
+
+async function setGanador(id, ganador, perdedor) {
+  await fetch(`${API}?accion=setGanador&id=${encodeURIComponent(id)}&ganador=${encodeURIComponent(ganador)}&perdedor=${encodeURIComponent(perdedor)}`);
+  cargarEliminatorias();
+}
+
+async function resetearTodo() {
+  if (!confirm("⚠️ RESETEAR TODO\n\nSe borrarán:\n• Todos los resultados\n• Todos los pronósticos\n• Posiciones\n• Eliminatorias (se reinicializa)\n\n¿Estás seguro?")) return;
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = "Reseteando...";
+  try {
+    const res  = await fetch(`${API}?accion=resetearTodo`);
+    const data = await res.json();
+    alert(data.mensaje || "Reset completado");
+    cargarPartidos();
+    cargarEliminatorias();
+  } catch(e) { alert("Error al resetear"); }
+  btn.disabled = false; btn.textContent = "🗑️ Resetear todo";
+}
+
+async function inicializarEliminatorias() {
+  if (!confirm("¿Inicializar el bracket? Borra y recrea la hoja Eliminatorias con el fixture completo.")) return;
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = "Inicializando...";
+  try {
+    const res  = await fetch(`${API}?accion=inicializarEliminatorias`);
+    const data = await res.json();
+    alert(data.mensaje || "Listo");
+    cargarEliminatorias();
+  } catch(e) { alert("Error al inicializar"); }
+  btn.disabled = false; btn.textContent = "⚡ Inicializar bracket";
+}
+
+cargarPartidos();
+cargarEliminatorias();
+</script>
+</body>
+</html>
