@@ -15,6 +15,7 @@ function doGet(e) {
   if (accion == "inicializarEliminatorias") return inicializarEliminatorias();
   if (accion == "actualizarSlot")           return actualizarSlot(e);
   if (accion == "resetearTodo")             return resetearTodo();
+  if (accion == "sincronizarResultados")    return sincronizarResultados();
   return ContentService.createTextOutput("API PRODE");
 }
 
@@ -129,11 +130,15 @@ function recalcularPosiciones() {
     if (apuesta == resultadoReal && resultadoReal != "") puntos[usuario]++;
   }
 
-  hojaPosiciones.clearContents();
-  hojaPosiciones.appendRow(["Usuario", "Puntos"]);
-  Object.entries(puntos)
-    .sort((a, b) => b[1] - a[1])
-    .forEach(([u, p]) => hojaPosiciones.appendRow([u, p]));
+  // Borrar filas físicamente para evitar duplicados
+  const lastRow = hojaPosiciones.getLastRow();
+  if (lastRow > 1) hojaPosiciones.deleteRows(2, lastRow - 1);
+  hojaPosiciones.getRange(1, 1, 1, 2).setValues([["Usuario", "Puntos"]]);
+
+  const ordenados = Object.entries(puntos).sort((a, b) => b[1] - a[1]);
+  if (ordenados.length > 0) {
+    hojaPosiciones.getRange(2, 1, ordenados.length, 2).setValues(ordenados.map(([u, p]) => [u, p]));
+  }
 }
 
 // ─── OBTENER POSICIONES ───────────────────────────────
@@ -223,6 +228,125 @@ function avanzarEquipo(hoja, sigId, equipo, slot) {
       break;
     }
   }
+}
+
+// ─── SINCRONIZAR RESULTADOS AUTOMÁTICAMENTE ───────────
+// Requiere: guardar tu API key de football-data.org en
+// Apps Script → Configuración del proyecto → Propiedades de script
+// Clave: FOOTBALL_API_KEY  Valor: tu_api_key
+
+function sincronizarResultados() {
+  const apiKey = PropertiesService.getScriptProperties().getProperty("FOOTBALL_API_KEY");
+  if (!apiKey) return jsonOutput({ ok: false, error: "Falta FOOTBALL_API_KEY en propiedades del script" });
+
+  // Mapeo nombres en inglés (API) → español (tu sheet)
+  const NOMBRES = {
+    "Mexico": "México", "South Africa": "Sudáfrica", "South Korea": "Corea del Sur",
+    "Czech Republic": "República Checa", "Czechia": "República Checa",
+    "Canada": "Canadá", "Bosnia and Herzegovina": "Bosnia y Herzegovina",
+    "Qatar": "Qatar", "Switzerland": "Suiza", "Brazil": "Brasil",
+    "Morocco": "Marruecos", "Haiti": "Haití", "Scotland": "Escocia",
+    "United States": "Estados Unidos", "USA": "Estados Unidos",
+    "Paraguay": "Paraguay", "Australia": "Australia", "Turkey": "Turquía",
+    "Germany": "Alemania", "Curaçao": "Curazao", "Curacao": "Curazao",
+    "Ivory Coast": "Costa de Marfil", "Côte d'Ivoire": "Costa de Marfil",
+    "Ecuador": "Ecuador", "Netherlands": "Países Bajos", "Japan": "Japón",
+    "Sweden": "Suecia", "Tunisia": "Túnez", "Belgium": "Bélgica",
+    "Egypt": "Egipto", "Iran": "Irán", "New Zealand": "Nueva Zelanda",
+    "Spain": "España", "Cape Verde": "Cabo Verde", "Saudi Arabia": "Arabia Saudita",
+    "Uruguay": "Uruguay", "France": "Francia", "Senegal": "Senegal",
+    "Iraq": "Irak", "Norway": "Noruega", "Argentina": "Argentina",
+    "Algeria": "Argelia", "Austria": "Austria", "Jordan": "Jordania",
+    "Portugal": "Portugal", "DR Congo": "RD de Congo",
+    "Uzbekistan": "Uzbekistán", "Colombia": "Colombia",
+    "England": "Inglaterra", "Croatia": "Croacia", "Ghana": "Ghana", "Panama": "Panamá"
+  };
+
+  // Traer partidos finalizados del Mundial
+  let response;
+  try {
+    response = UrlFetchApp.fetch(
+      "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
+      { headers: { "X-Auth-Token": apiKey }, muteHttpExceptions: true }
+    );
+  } catch(e) {
+    return jsonOutput({ ok: false, error: "Error de red: " + e.message });
+  }
+
+  if (response.getResponseCode() !== 200) {
+    return jsonOutput({ ok: false, error: "API error " + response.getResponseCode() + ": " + response.getContentText() });
+  }
+
+  const data    = JSON.parse(response.getContentText());
+  const matches = data.matches || [];
+
+  // Cargar partidos del sheet para buscar por equipos
+  const ss          = SpreadsheetApp.getActiveSpreadsheet();
+  const hojaPartidos = ss.getSheetByName("Partidos");
+  const partidos    = hojaPartidos.getDataRange().getValues();
+
+  let actualizados = 0;
+
+  matches.forEach(m => {
+    const score = m.score && m.score.fullTime;
+    if (!score || score.home === null || score.away === null) return;
+
+    const localApi     = NOMBRES[m.homeTeam.name] || m.homeTeam.shortName || m.homeTeam.name;
+    const visitanteApi = NOMBRES[m.awayTeam.name] || m.awayTeam.shortName || m.awayTeam.name;
+
+    // Determinar L / E / V
+    let resultado;
+    if      (score.home > score.away) resultado = "L";
+    else if (score.home < score.away) resultado = "V";
+    else                               resultado = "E";
+
+    // Buscar el partido en el sheet por nombres de equipos
+    let partidoId = null;
+    for (let i = 1; i < partidos.length; i++) {
+      const localSheet     = String(partidos[i][2]).trim();
+      const visitanteSheet = String(partidos[i][3]).trim();
+      if (localSheet === localApi && visitanteSheet === visitanteApi) {
+        partidoId = partidos[i][0];
+        break;
+      }
+    }
+
+    if (!partidoId) return; // no encontrado
+
+    // Guardar resultado
+    const hojaResultados = ss.getSheetByName("Resultados");
+    const resultados     = hojaResultados.getDataRange().getValues();
+    let encontrado = false;
+
+    for (let i = 1; i < resultados.length; i++) {
+      if (resultados[i][0] == partidoId) {
+        hojaResultados.getRange(i + 1, 2).setValue(resultado);
+        encontrado = true;
+        break;
+      }
+    }
+    if (!encontrado) hojaResultados.appendRow([partidoId, resultado]);
+    actualizados++;
+  });
+
+  if (actualizados > 0) recalcularPosiciones();
+
+  return jsonOutput({ ok: true, actualizados: actualizados, total: matches.length });
+}
+
+// ─── CREAR TRIGGER AUTOMÁTICO (ejecutar UNA vez desde el editor) ──
+// Llama a sincronizarResultados() cada hora automáticamente
+function crearTriggerSincronizacion() {
+  // Borrar triggers anteriores del mismo nombre
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === "sincronizarResultados") ScriptApp.deleteTrigger(t);
+  });
+  // Crear trigger cada hora
+  ScriptApp.newTrigger("sincronizarResultados")
+    .timeBased()
+    .everyHours(1)
+    .create();
+  Logger.log("✅ Trigger creado: sincronizarResultados cada 1 hora");
 }
 
 // ─── RESETEAR TODO ────────────────────────────────────

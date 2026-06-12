@@ -128,7 +128,11 @@
 
 <div class="container mt-3" style="max-width:760px">
 
-  <div class="sec-title mb-1">⚙️ Resultados — Fase de Grupos</div>
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <div class="sec-title mb-0">⚙️ Resultados — Fase de Grupos</div>
+    <button class="btn btn-sm" style="border:1px solid rgba(100,200,100,0.4);color:rgba(100,220,100,0.9)"
+      onclick="sincronizar()">🔄 Sincronizar resultados</button>
+  </div>
   <div id="partidos">
     <div class="text-center py-3" style="color:rgba(255,255,255,0.4)">
       <div class="spinner-border spinner-border-sm me-2"></div>Cargando...
@@ -373,6 +377,22 @@ function reabrirSlot(partidoId, slot, equipoActual) {
 async function setGanador(id, ganador, perdedor) {
   await fetch(`${API}?accion=setGanador&id=${encodeURIComponent(id)}&ganador=${encodeURIComponent(ganador)}&perdedor=${encodeURIComponent(perdedor)}`);
   cargarEliminatorias();
+}
+
+async function sincronizar() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = "Sincronizando...";
+  try {
+    const res  = await fetch(`${API}?accion=sincronizarResultados`);
+    const data = await res.json();
+    if (data.ok) {
+      alert(`✅ Sincronizado: ${data.actualizados} resultado(s) actualizados de ${data.total} partidos finalizados.`);
+      cargarPartidos();
+    } else {
+      alert("❌ Error: " + (data.error || "desconocido"));
+    }
+  } catch(e) { alert("Error de conexión"); }
+  btn.disabled = false; btn.textContent = "🔄 Sincronizar resultados";
 }
 
 async function resetearTodo() {
