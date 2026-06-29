@@ -241,32 +241,50 @@ function sincronizarResultados() {
 
   // Mapeo nombres en inglés (API) → español (tu sheet)
   const NOMBRES = {
-    "Mexico": "México", "South Africa": "Sudáfrica", "South Korea": "Corea del Sur",
+    // Grupo A
+    "Mexico": "México", "South Africa": "Sudáfrica",
+    "Korea Republic": "Corea del Sur", "South Korea": "Corea del Sur",
     "Czech Republic": "República Checa", "Czechia": "República Checa",
+    // Grupo B
     "Canada": "Canadá", "Bosnia and Herzegovina": "Bosnia y Herzegovina",
-    "Qatar": "Qatar", "Switzerland": "Suiza", "Brazil": "Brasil",
-    "Morocco": "Marruecos", "Haiti": "Haití", "Scotland": "Escocia",
+    "Bosnia & Herzegovina": "Bosnia y Herzegovina",
+    "Qatar": "Qatar", "Switzerland": "Suiza",
+    // Grupo C
+    "Brazil": "Brasil", "Morocco": "Marruecos", "Haiti": "Haití", "Scotland": "Escocia",
+    // Grupo D
     "United States": "Estados Unidos", "USA": "Estados Unidos",
-    "Paraguay": "Paraguay", "Australia": "Australia", "Turkey": "Turquía",
+    "Paraguay": "Paraguay", "Australia": "Australia",
+    "Turkey": "Turquía", "Türkiye": "Turquía",
+    // Grupo E
     "Germany": "Alemania", "Curaçao": "Curazao", "Curacao": "Curazao",
     "Ivory Coast": "Costa de Marfil", "Côte d'Ivoire": "Costa de Marfil",
-    "Ecuador": "Ecuador", "Netherlands": "Países Bajos", "Japan": "Japón",
-    "Sweden": "Suecia", "Tunisia": "Túnez", "Belgium": "Bélgica",
-    "Egypt": "Egipto", "Iran": "Irán", "New Zealand": "Nueva Zelanda",
-    "Spain": "España", "Cape Verde": "Cabo Verde", "Saudi Arabia": "Arabia Saudita",
-    "Uruguay": "Uruguay", "France": "Francia", "Senegal": "Senegal",
-    "Iraq": "Irak", "Norway": "Noruega", "Argentina": "Argentina",
-    "Algeria": "Argelia", "Austria": "Austria", "Jordan": "Jordania",
-    "Portugal": "Portugal", "DR Congo": "RD de Congo",
-    "Uzbekistan": "Uzbekistán", "Colombia": "Colombia",
+    "Cote d'Ivoire": "Costa de Marfil", "Ecuador": "Ecuador",
+    // Grupo F
+    "Netherlands": "Países Bajos", "Japan": "Japón",
+    "Sweden": "Suecia", "Tunisia": "Túnez",
+    // Grupo G
+    "Belgium": "Bélgica", "Egypt": "Egipto",
+    "Iran": "Irán", "IR Iran": "Irán", "New Zealand": "Nueva Zelanda",
+    // Grupo H
+    "Spain": "España", "Cape Verde": "Cabo Verde",
+    "Saudi Arabia": "Arabia Saudita", "Uruguay": "Uruguay",
+    // Grupo I
+    "France": "Francia", "Senegal": "Senegal", "Iraq": "Irak", "Norway": "Noruega",
+    // Grupo J
+    "Argentina": "Argentina", "Algeria": "Argelia", "Austria": "Austria", "Jordan": "Jordania",
+    // Grupo K
+    "Portugal": "Portugal", "DR Congo": "RD de Congo", "Congo DR": "RD de Congo",
+    "Congo, DR": "RD de Congo", "Uzbekistan": "Uzbekistán", "Colombia": "Colombia",
+    // Grupo L
     "England": "Inglaterra", "Croatia": "Croacia", "Ghana": "Ghana", "Panama": "Panamá"
   };
 
   // Traer partidos finalizados del Mundial
   let response;
   try {
+    // Solo traer partidos de fase de grupos finalizados
     response = UrlFetchApp.fetch(
-      "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
+      "https://api.football-data.org/v4/competitions/WC/matches?stage=GROUP_STAGE&status=FINISHED",
       { headers: { "X-Auth-Token": apiKey }, muteHttpExceptions: true }
     );
   } catch(e) {

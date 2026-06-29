@@ -132,18 +132,20 @@ function salir() { localStorage.clear(); window.location = "index.html"; }
 const medals   = ["🥇","🥈","🥉"];
 const numClass = ["gold","silver","bronze"];
 
+const TOTAL_PARTIDOS_GRUPOS = 72; // 12 grupos × 6 partidos
+
 async function cargarTodo() {
   try {
-    const [resPosiciones, resElim] = await Promise.all([
+    const [resPosiciones, resPartidos] = await Promise.all([
       fetch(`${API}?accion=posiciones`),
-      fetch(`${API}?accion=eliminatorias`)
+      fetch(`${API}?accion=partidos`)
     ]);
-    const posiciones   = await resPosiciones.json();
-    const eliminatorias = await resElim.json();
+    const posiciones = await resPosiciones.json();
+    const partidos   = await resPartidos.json();
 
-    // ¿Terminó la final?
-    const final = eliminatorias.find(p => p.id === "P104");
-    const torneoFinalizado = final && final.ganador && final.ganador !== "";
+    // Torneo finalizado cuando todos los partidos de grupos están terminados
+    const finalizados      = partidos.filter(p => p.estado === "finalizado").length;
+    const torneoFinalizado = finalizados >= TOTAL_PARTIDOS_GRUPOS;
 
     renderTabla(posiciones, torneoFinalizado);
     actualizarHora();
