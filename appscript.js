@@ -248,6 +248,7 @@ function sincronizarResultados() {
     // Grupo B
     "Canada": "Canadá", "Bosnia and Herzegovina": "Bosnia y Herzegovina",
     "Bosnia & Herzegovina": "Bosnia y Herzegovina",
+    "Bosnia-Herzegovina": "Bosnia y Herzegovina",
     "Qatar": "Qatar", "Switzerland": "Suiza",
     // Grupo C
     "Brazil": "Brasil", "Morocco": "Marruecos", "Haiti": "Haití", "Scotland": "Escocia",
@@ -266,7 +267,7 @@ function sincronizarResultados() {
     "Belgium": "Bélgica", "Egypt": "Egipto",
     "Iran": "Irán", "IR Iran": "Irán", "New Zealand": "Nueva Zelanda",
     // Grupo H
-    "Spain": "España", "Cape Verde": "Cabo Verde",
+    "Spain": "España", "Cape Verde": "Cabo Verde", "Cape Verde Islands": "Cabo Verde",
     "Saudi Arabia": "Arabia Saudita", "Uruguay": "Uruguay",
     // Grupo I
     "France": "Francia", "Senegal": "Senegal", "Iraq": "Irak", "Norway": "Noruega",
@@ -282,9 +283,8 @@ function sincronizarResultados() {
   // Traer partidos finalizados del Mundial
   let response;
   try {
-    // Solo traer partidos de fase de grupos finalizados
     response = UrlFetchApp.fetch(
-      "https://api.football-data.org/v4/competitions/WC/matches?stage=GROUP_STAGE&status=FINISHED",
+      "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
       { headers: { "X-Auth-Token": apiKey }, muteHttpExceptions: true }
     );
   } catch(e) {
@@ -299,9 +299,11 @@ function sincronizarResultados() {
   const matches = data.matches || [];
 
   // Cargar partidos del sheet para buscar por equipos
-  const ss          = SpreadsheetApp.getActiveSpreadsheet();
+  // Solo los IDs que existen en la hoja Partidos (fase de grupos)
+  const ss           = SpreadsheetApp.getActiveSpreadsheet();
   const hojaPartidos = ss.getSheetByName("Partidos");
-  const partidos    = hojaPartidos.getDataRange().getValues();
+  const partidos     = hojaPartidos.getDataRange().getValues();
+  const idsGrupos    = new Set(partidos.slice(1).map(r => String(r[0])));
 
   let actualizados = 0;
 
@@ -319,7 +321,9 @@ function sincronizarResultados() {
     else                               resultado = "E";
 
     // Buscar el partido en el sheet por nombres de equipos
+    // También prueba invertido porque la API puede tener home/away distinto al sheet
     let partidoId = null;
+    let resultadoFinal = resultado;
     for (let i = 1; i < partidos.length; i++) {
       const localSheet     = String(partidos[i][2]).trim();
       const visitanteSheet = String(partidos[i][3]).trim();
@@ -327,9 +331,18 @@ function sincronizarResultados() {
         partidoId = partidos[i][0];
         break;
       }
+      // Invertido: el sheet tiene los equipos al revés que la API
+      if (localSheet === visitanteApi && visitanteSheet === localApi) {
+        partidoId = partidos[i][0];
+        // Invertir resultado: L→V, V→L, E→E
+        resultadoFinal = resultado === "L" ? "V" : resultado === "V" ? "L" : "E";
+        break;
+      }
     }
 
     if (!partidoId) return; // no encontrado
+    // Ignorar si no es partido de fase de grupos
+    if (!idsGrupos.has(String(partidoId))) return;
 
     // Guardar resultado
     const hojaResultados = ss.getSheetByName("Resultados");
@@ -338,12 +351,12 @@ function sincronizarResultados() {
 
     for (let i = 1; i < resultados.length; i++) {
       if (resultados[i][0] == partidoId) {
-        hojaResultados.getRange(i + 1, 2).setValue(resultado);
+        hojaResultados.getRange(i + 1, 2).setValue(resultadoFinal);
         encontrado = true;
         break;
       }
     }
-    if (!encontrado) hojaResultados.appendRow([partidoId, resultado]);
+    if (!encontrado) hojaResultados.appendRow([partidoId, resultadoFinal]);
     actualizados++;
   });
 
